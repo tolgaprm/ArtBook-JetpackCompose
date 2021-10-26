@@ -50,6 +50,7 @@ fun MainScreen(navController: NavController) {
                             .padding(16.dp)
 
                     )
+                    Divider()
 
                 }
             }

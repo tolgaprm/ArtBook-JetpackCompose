@@ -3,7 +3,6 @@ package com.tolgapirim.artbook.screen
 import android.Manifest
 import android.app.Activity.MODE_PRIVATE
 import android.app.Activity.RESULT_OK
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
@@ -17,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,7 +36,8 @@ import java.io.ByteArrayOutputStream
 
 
 @Composable
-fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
+fun ArtScreen(navController: NavController, id: Int?, isFromMenu: Boolean?) {
+
 
     val context = LocalContext.current
 
@@ -98,23 +100,23 @@ fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
     ) {
         ArtBookTheme() {
             val db = context.openOrCreateDatabase("Artss", MODE_PRIVATE, null)
-            if (!isFromMenu!!){
+            if (!isFromMenu!!) {
 
                 val cursor = db.rawQuery("SELECT * FROM arts WHERE id=?", arrayOf(id.toString()))
 
-                val nameIx= cursor.getColumnIndex("artName")
+                val nameIx = cursor.getColumnIndex("artName")
                 val artistIx = cursor.getColumnIndex("artistName")
                 val yearIx = cursor.getColumnIndex("year")
                 val imageIx = cursor.getColumnIndex("image")
 
 
-                while (cursor.moveToNext()){
+                while (cursor.moveToNext()) {
                     artName = cursor.getString(nameIx)
                     artistName = cursor.getString(artistIx)
                     year = cursor.getString(yearIx)
                     val byte = cursor.getBlob(imageIx)
 
-                    selectedImage.value = BitmapFactory.decodeByteArray(byte,0,byte.size)
+                    selectedImage.value = BitmapFactory.decodeByteArray(byte, 0, byte.size)
 
                 }
 
@@ -123,7 +125,7 @@ fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
             }
 
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(top=16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
@@ -137,7 +139,8 @@ fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
                                     Manifest.permission.READ_EXTERNAL_STORAGE
                                 ) != PackageManager.PERMISSION_GRANTED
                             ) {
-                                permissionResultLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+
+                                    permissionResultLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
 
                             } else {
                                 val intentToGallery =
@@ -174,22 +177,34 @@ fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
 
                 TextField(value = year,
                     onValueChange = { year = it },
-                    label = { Text(text = "Year") }
+                    label = { Text(text = "Year") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
 
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = {
-                        saveToDatabase(selectedImage.value,artName,artistName,year,navController,db)
+
+                if(isFromMenu){
+                    Button(
+                        onClick = {
+                            saveToDatabase(
+                                selectedImage.value,
+                                artName,
+                                artistName,
+                                year,
+                                navController,
+                                db
+                            )
+                        }
+                    ) {
+                        Text(
+                            text = "Save",
+                            style = MaterialTheme.typography.button.copy(fontSize = 17.sp)
+                        )
                     }
-                ) {
-                    Text(
-                        text = "Save",
-                        style = MaterialTheme.typography.button.copy(fontSize = 17.sp)
-                    )
                 }
+
 
             }
 
@@ -219,7 +234,7 @@ fun saveToDatabase(
     artistName: String,
     year: String,
     navController: NavController,
-    db:SQLiteDatabase
+    db: SQLiteDatabase
 ) {
 
     try {
@@ -238,20 +253,18 @@ fun saveToDatabase(
         smallBitmap.compress(Bitmap.CompressFormat.PNG, 50, outputStream)
         val byteArray = outputStream.toByteArray()
 
-        compileStatement.bindString(1,artName)
-        compileStatement.bindString(2,artistName)
-        compileStatement.bindString(3,year)
-        compileStatement.bindBlob(4,byteArray)
+        compileStatement.bindString(1, artName)
+        compileStatement.bindString(2, artistName)
+        compileStatement.bindString(3, year)
+        compileStatement.bindBlob(4, byteArray)
 
         compileStatement.execute()
 
         navController.navigate("mainScreen")
 
-    }catch (e:Exception){
+    } catch (e: Exception) {
         e.printStackTrace()
     }
-
-
 
 
 }
