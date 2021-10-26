@@ -6,6 +6,7 @@ import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -34,8 +35,8 @@ import java.io.ByteArrayOutputStream
 
 
 @Composable
-fun ArtScreen(navController: NavController) {
-    /* TODO ekran tasarımını yap */
+fun ArtScreen(navController: NavController,id:Int?,isFromMenu:Boolean?) {
+
     val context = LocalContext.current
 
     var artName by remember { mutableStateOf("") }
@@ -57,17 +58,17 @@ fun ArtScreen(navController: NavController) {
                 val imageUri = it.data
 
                 if (imageUri != null) {
-                    var bitmap: Bitmap? = null
+                    var bitmap1: Bitmap? = null
                     try {
                         if (Build.VERSION.SDK_INT >= 28) {
                             val source =
                                 ImageDecoder.createSource(context.contentResolver, imageUri)
-                            bitmap = ImageDecoder.decodeBitmap(source)
-                            selectedImage.value = bitmap
+                            bitmap1 = ImageDecoder.decodeBitmap(source)
+                            selectedImage.value = bitmap1
                         } else {
-                            bitmap =
+                            bitmap1 =
                                 MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
-                            selectedImage.value = bitmap
+                            selectedImage.value = bitmap1
                         }
 
                     } catch (e: Exception) {
@@ -96,7 +97,30 @@ fun ArtScreen(navController: NavController) {
         topBar = { TopBar(titleTopBar = "Add Art") }
     ) {
         ArtBookTheme() {
+            val db = context.openOrCreateDatabase("Artss", MODE_PRIVATE, null)
+            if (!isFromMenu!!){
 
+                val cursor = db.rawQuery("SELECT * FROM arts WHERE id=?", arrayOf(id.toString()))
+
+                val nameIx= cursor.getColumnIndex("artName")
+                val artistIx = cursor.getColumnIndex("artistName")
+                val yearIx = cursor.getColumnIndex("year")
+                val imageIx = cursor.getColumnIndex("image")
+
+
+                while (cursor.moveToNext()){
+                    artName = cursor.getString(nameIx)
+                    artistName = cursor.getString(artistIx)
+                    year = cursor.getString(yearIx)
+                    val byte = cursor.getBlob(imageIx)
+
+                    selectedImage.value = BitmapFactory.decodeByteArray(byte,0,byte.size)
+
+                }
+
+                cursor.close()
+
+            }
 
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -158,7 +182,7 @@ fun ArtScreen(navController: NavController) {
 
                 Button(
                     onClick = {
-                        saveToDatabase(context, selectedImage.value,artName,artistName,year,navController)
+                        saveToDatabase(selectedImage.value,artName,artistName,year,navController,db)
                     }
                 ) {
                     Text(
@@ -189,16 +213,17 @@ fun TopBar(titleTopBar: String) {
 
 
 fun saveToDatabase(
-    context: Context,
+
     selectedBitmap: Bitmap,
     artName: String,
     artistName: String,
     year: String,
-    navController: NavController
+    navController: NavController,
+    db:SQLiteDatabase
 ) {
 
     try {
-        val db = context.openOrCreateDatabase("Artss", MODE_PRIVATE, null)
+
 
         db.execSQL("CREATE TABLE IF NOT EXISTS arts (id INTEGER PRIMARY KEY, artName VARCHAR, artistName VARCHAR, year VARCHAR, image BLOB)")
 
@@ -216,7 +241,7 @@ fun saveToDatabase(
         compileStatement.bindString(1,artName)
         compileStatement.bindString(2,artistName)
         compileStatement.bindString(3,year)
-        compileStatement.bindString(4,byteArray.toString())
+        compileStatement.bindBlob(4,byteArray)
 
         compileStatement.execute()
 
